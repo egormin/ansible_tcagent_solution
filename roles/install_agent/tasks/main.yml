@@ -1,0 +1,100 @@
+- name: ===================== Install Java =====================
+  yum:    
+    name: java
+    state: latest
+  become: yes
+
+- name: ===================== Install libselinux-python =====================
+  yum:
+    name: "{{item.package}}"
+    state: latest
+  with_items: 
+    - { package: 'libselinux-python' }
+    - { package: 'unzip' }
+  become: yes
+
+- name: ===================== Check if directory '{{buildAgent_path}}' exists =====================
+  file:
+    path: '{{buildAgent_path}}'
+    state: directory
+    mode: 0755
+  become: yes
+
+- name: ===================== Download build agent =====================
+  unarchive:
+    src: "{{TeamCity_url}}/update/buildAgent.zip"
+    dest: '{{buildAgent_path}}'
+    remote_src: yes
+    keep_newer: yes
+  become: yes
+  
+- name: ===================== Check if buildAgent config already exists =====================
+  stat:
+    path: "{{buildAgent_path}}conf/buildAgent.properties"
+  register: buildAgentConfig
+
+- name: ===================== Getting existing agent token if exist =====================
+  shell: cat {{buildAgent_path}}conf/buildAgent.properties | grep authorizationToken= | cut -d "=" -f2
+  register: agentToken
+  when: buildAgentConfig.stat.exists == True
+  
+- name: ==================== Copying buildAgent config to /tmp for token changing =================
+  template:
+    src: buildagent_properties.j2
+    dest: "/tmp/buildAgent.properties"
+    mode: 0755
+  become: yes
+
+- name: ==================== Agent token changing to existing =================
+  lineinfile:
+    path: /tmp/buildAgent.properties
+    regexp: '__myToken__'
+    line: 'authorizationToken={{ agentToken.stdout }}'
+  when: buildAgentConfig.stat.exists == True  
+  become: yes
+  
+- name: ==================== Agent token changing to empty =================
+  lineinfile:
+    path: /tmp/buildAgent.properties
+    regexp: '__myToken__'
+    line: ''
+  when: buildAgentConfig.stat.exists == False
+  become: yes
+  
+- name: ==================== Copying buildAgent.properties to '{{buildAgent_path}}conf' =================
+  copy:
+    src: /tmp/buildAgent.properties
+    dest: "{{buildAgent_path}}conf/buildAgent.properties"
+    remote_src: yes
+  become: yes
+
+- name: ==================== TC agent init script copying =================
+  template:
+    src: buildAgent.j2
+    dest: "/etc/init.d/{{TCAgentService_name}}"
+    mode: 0755
+  become: yes
+  
+- name: 
+  debug: msg="Existing token for agent {{ ansible_hostname }} is {{ agentToken.stdout }}"
+  when: buildAgentConfig.stat.exists == True 
+
+- name: ==================== TC agent start =================
+  service:
+    name: '{{TCAgentService_name}}'
+    pattern: /etc/init.d
+    state: started
+    enabled: True
+  become: yes
+
+- name: ==================== Wait until agent starts up =================
+  wait_for: timeout=90
+  delegate_to: localhost
+
+- name: ==================== Register Agents ================
+  agent_authorize:
+    hosts: all
+    tc_url: '{{TeamCity_url}}'
+    tc_user: '{{ tc_user }}'
+    tc_password: '{{ tc_password }}'
+  no_log: True
