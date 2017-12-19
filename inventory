@@ -1,0 +1,1 @@
+tc_agent ansible_host=__myHost_- ansible_ssh_user=__myUser__ ansible_ssh_pass=__myPass__ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
