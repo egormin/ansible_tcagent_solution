@@ -1,6 +1,0 @@
-buildAgent_path: '/opt/buildAgent/'
-TeamCity_url: 'http://10.6.98.57:9999'
-buildAgent_user: 'root'
-TCAgentService_name: 'teamcity-agent'
-tc_user: '__tc_user__'
-tc_password: '__tc_password__'
