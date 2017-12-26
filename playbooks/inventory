@@ -1,1 +1,17 @@
-tc_agent ansible_host=__myHost__ ansible_ssh_user=__myUser__ ansible_ssh_pass=__myPass__ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+[DEV_servers]
+10.6.98.55
+
+[PROD_servers]
+10.6.98.17
+
+[All_servers:children]
+DEV_servers
+PROD_servers
+
+[All_servers:vars]
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ansible_ssh_user=__myUser__
+ansible_ssh_pass=__myPass__
+
+
+#tc_agent ansible_host=__myHost__ ansible_ssh_user=__myUser__ ansible_ssh_pass=__myPass__ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
